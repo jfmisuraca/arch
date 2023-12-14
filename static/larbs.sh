@@ -185,19 +185,19 @@ vimplugininstall() {
 	# Installs vim plugins.
 	whiptail --infobox "Installing neovim plugins..." 7 60
 	mkdir -p "/home/$name/.config/nvim/autoload"
-	curl -Ls "https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim" >  "/home/$name/.config/nvim/autoload/plug.vim"
+	curl -Ls "https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim" >"/home/$name/.config/nvim/autoload/plug.vim"
 	chown -R "$name:wheel" "/home/$name/.config/nvim"
 	sudo -u "$name" nvim -c "PlugInstall|q|q"
 }
 
-makeuserjs(){
+makeuserjs() {
 	# Get the Arkenfox user.js and prepare it.
 	arkenfox="$pdir/arkenfox.js"
 	overrides="$pdir/user-overrides.js"
 	userjs="$pdir/user.js"
 	ln -fs "/home/$name/.config/firefox/larbs.js" "$overrides"
-	[ ! -f "$arkenfox" ] && curl -sL "https://raw.githubusercontent.com/arkenfox/user.js/master/user.js" > "$arkenfox"
-	cat "$arkenfox" "$overrides" > "$userjs"
+	[ ! -f "$arkenfox" ] && curl -sL "https://raw.githubusercontent.com/arkenfox/user.js/master/user.js" >"$arkenfox"
+	cat "$arkenfox" "$overrides" >"$userjs"
 	chown "$name:wheel" "$arkenfox" "$userjs"
 	# Install the updating script.
 	mkdir -p /usr/local/lib /etc/pacman.d/hooks
@@ -215,13 +215,13 @@ Target = librewolf-bin
 Description=Update Arkenfox user.js
 When=PostTransaction
 Depends=arkenfox-user.js
-Exec=/usr/local/lib/arkenfox-auto-update" > /etc/pacman.d/hooks/arkenfox.hook
+Exec=/usr/local/lib/arkenfox-auto-update" >/etc/pacman.d/hooks/arkenfox.hook
 }
 
-installffaddons(){
+installffaddons() {
 	addonlist="ublock-origin decentraleyes istilldontcareaboutcookies vim-vixen"
 	addontmp="$(mktemp -d)"
-	trap "rm -fr $addontmp" HUP INT QUIT TERM PWR EXIT
+	trap 'rm -fr $addontmp' HUP INT QUIT TERM PWR EXIT
 	IFS=' '
 	sudo -u "$name" mkdir -p "$pdir/extensions/"
 	for addon in $addonlist; do
@@ -231,7 +231,7 @@ installffaddons(){
 			addonurl="$(curl --silent "https://addons.mozilla.org/en-US/firefox/addon/${addon}/" | grep -o 'https://addons.mozilla.org/firefox/downloads/file/[^"]*')"
 		fi
 		file="${addonurl##*/}"
-		sudo -u "$name" curl -LOs "$addonurl" > "$addontmp/$file"
+		sudo -u "$name" curl -LOs "$addonurl" >"$addontmp/$file"
 		id="$(unzip -p "$file" manifest.json | grep "\"id\"")"
 		id="${id%\"*}"
 		id="${id##*\"}"
@@ -240,8 +240,8 @@ installffaddons(){
 	chown -R "$name:$name" "$pdir/extensions"
 	# Fix a Vim Vixen bug with dark mode not fixed on upstream:
 	sudo -u "$name" mkdir -p "$pdir/chrome"
-	[ ! -f  "$pdir/chrome/userContent.css" ] && sudo -u "$name" echo ".vimvixen-console-frame { color-scheme: light !important; }
-#category-more-from-mozilla { display: none !important }" > "$pdir/chrome/userContent.css"
+	[ ! -f "$pdir/chrome/userContent.css" ] && sudo -u "$name" echo ".vimvixen-console-frame { color-scheme: light !important; }
+#category-more-from-mozilla { display: none !important }" >"$pdir/chrome/userContent.css"
 }
 
 finalize() {
@@ -372,7 +372,7 @@ echo "%wheel ALL=(ALL:ALL) ALL" >/etc/sudoers.d/00-larbs-wheel-can-sudo
 echo "%wheel ALL=(ALL:ALL) NOPASSWD: /usr/bin/shutdown,/usr/bin/reboot,/usr/bin/systemctl suspend,/usr/bin/wifi-menu,/usr/bin/mount,/usr/bin/umount,/usr/bin/pacman -Syu,/usr/bin/pacman -Syyu,/usr/bin/pacman -Syyu --noconfirm,/usr/bin/loadkeys,/usr/bin/pacman -Syyuw --noconfirm,/usr/bin/pacman -S -u -y --config /etc/pacman.conf --,/usr/bin/pacman -S -y -u --config /etc/pacman.conf --" >/etc/sudoers.d/01-larbs-cmds-without-password
 echo "Defaults editor=/usr/bin/nvim" >/etc/sudoers.d/02-larbs-visudo-editor
 mkdir -p /etc/sysctl.d
-echo "kernel.dmesg_restrict = 0" > /etc/sysctl.d/dmesg.conf
+echo "kernel.dmesg_restrict = 0" >/etc/sysctl.d/dmesg.conf
 
 # Last message! Install complete!
 finalize
