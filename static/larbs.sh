@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Luke's Auto Rice Boostrapping Script (LARBS)
+# Luke's Auto Rice Bootstrapping Script (LARBS)
 # by Luke Smith <luke@lukesmith.xyz>
 # License: GNU GPLv3
 
@@ -11,6 +11,17 @@ progsfile="https://raw.githubusercontent.com/LukeSmithxyz/LARBS/master/static/pr
 aurhelper="yay"
 repobranch="master"
 export TERM=ansi
+
+rssurls="https://lukesmith.xyz/rss.xml
+https://videos.lukesmith.xyz/feeds/videos.xml?videoChannelId=2 \"~Luke Smith (Videos)\"
+https://www.youtube.com/feeds/videos.xml?channel_id=UC2eYFnH61tmytImy1mTYvhA \"~Luke Smith (YouTube)\"
+https://lindypress.net/rss
+https://notrelated.xyz/rss
+https://landchad.net/rss.xml
+https://based.cooking/index.xml
+https://artixlinux.org/feed.php \"tech\"
+https://www.archlinux.org/feeds/news/ \"tech\"
+https://github.com/LukeSmithxyz/voidrice/commits/master.atom \"~LARBS dotfiles\""
 
 ### FUNCTIONS ###
 
@@ -34,7 +45,7 @@ welcomemsg() {
 }
 
 getuserandpass() {
-	# Prompts user for new username an password.
+	# Prompts user for new username and password.
 	name=$(whiptail --inputbox "First, please enter a name for the user account." 10 60 3>&1 1>&2 2>&3 3>&1) || exit 1
 	while ! echo "$name" | grep -q "^[a-z_][a-z0-9_-]*$"; do
 		name=$(whiptail --nocancel --inputbox "Username not valid. Give a username beginning with a letter, with only lowercase letters, - or _." 10 60 3>&1 1>&2 2>&3 3>&1)
@@ -108,7 +119,7 @@ manualinstall() {
 			sudo -u "$name" git pull --force origin master
 		}
 	cd "$repodir/$1" || exit 1
-	sudo -u "$name" -D "$repodir/$1" \
+	sudo -u "$name" \
 		makepkg --noconfirm -si >/dev/null 2>&1 || return 1
 }
 
@@ -275,7 +286,7 @@ preinstallmsg || error "User exited."
 refreshkeys ||
 	error "Error automatically refreshing Arch keyring. Consider doing so manually."
 
-for x in curl ca-certificates base-devel git ntp zsh; do
+for x in curl ca-certificates base-devel git ntp zsh dash; do
 	whiptail --title "LARBS Installation" \
 		--infobox "Installing \`$x\` which is required to install and configure other programs." 8 70
 	installpkg "$x"
@@ -292,7 +303,8 @@ adduserandpass || error "Error adding username and/or password."
 # Allow user to run sudo without password. Since AUR programs must be installed
 # in a fakeroot environment, this is required for all builds with AUR.
 trap 'rm -f /etc/sudoers.d/larbs-temp' HUP INT QUIT TERM PWR EXIT
-echo "%wheel ALL=(ALL) NOPASSWD: ALL" >/etc/sudoers.d/larbs-temp
+echo "%wheel ALL=(ALL) NOPASSWD: ALL
+Defaults:%wheel,root runcwd=*" >/etc/sudoers.d/larbs-temp
 
 # Make pacman colorful, concurrent downloads and Pacman eye-candy.
 grep -q "ILoveCandy" /etc/pacman.conf || sed -i "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
@@ -317,6 +329,10 @@ installationloop
 putgitrepo "$dotfilesrepo" "/home/$name" "$repobranch"
 rm -rf "/home/$name/.git/" "/home/$name/README.md" "/home/$name/LICENSE" "/home/$name/FUNDING.yml"
 
+# Write urls for newsboat if it doesn't already exist
+[ -s "/home/$name/.config/newsboat/urls" ] ||
+	sudo -u "$name" echo "$rssurls" > "/home/$name/.config/newsboat/urls"
+
 # Install vim plugins if not alread present.
 [ ! -f "/home/$name/.config/nvim/autoload/plug.vim" ] && vimplugininstall
 
@@ -329,6 +345,9 @@ chsh -s /bin/zsh "$name" >/dev/null 2>&1
 sudo -u "$name" mkdir -p "/home/$name/.cache/zsh/"
 sudo -u "$name" mkdir -p "/home/$name/.config/abook/"
 sudo -u "$name" mkdir -p "/home/$name/.config/mpd/playlists/"
+
+# Make dash the default #!/bin/sh symlink.
+ln -sfT /bin/dash /bin/sh >/dev/null 2>&1
 
 # dbus UUID must be generated for Artix runit.
 dbus-uuidgen >/var/lib/dbus/machine-id
@@ -369,10 +388,13 @@ pkill -u "$name" librewolf
 # Allow wheel users to sudo with password and allow several system commands
 # (like `shutdown` to run without password).
 echo "%wheel ALL=(ALL:ALL) ALL" >/etc/sudoers.d/00-larbs-wheel-can-sudo
-echo "%wheel ALL=(ALL:ALL) NOPASSWD: /usr/bin/shutdown,/usr/bin/reboot,/usr/bin/systemctl suspend,/usr/bin/wifi-menu,/usr/bin/mount,/usr/bin/umount,/usr/bin/pacman -Syu,/usr/bin/pacman -Syyu,/usr/bin/pacman -Syyu --noconfirm,/usr/bin/loadkeys,/usr/bin/pacman -Syyuw --noconfirm,/usr/bin/pacman -S -u -y --config /etc/pacman.conf --,/usr/bin/pacman -S -y -u --config /etc/pacman.conf --" >/etc/sudoers.d/01-larbs-cmds-without-password
+echo "%wheel ALL=(ALL:ALL) NOPASSWD: /usr/bin/shutdown,/usr/bin/reboot,/usr/bin/systemctl suspend,/usr/bin/wifi-menu,/usr/bin/mount,/usr/bin/umount,/usr/bin/pacman -Syu,/usr/bin/pacman -Syyu,/usr/bin/pacman -Syyu --noconfirm,/usr/bin/loadkeys,/usr/bin/pacman -Syyuw --noconfirm,/usr/bin/pacman -S -y --config /etc/pacman.conf --,/usr/bin/pacman -S -y -u --config /etc/pacman.conf --" >/etc/sudoers.d/01-larbs-cmds-without-password
 echo "Defaults editor=/usr/bin/nvim" >/etc/sudoers.d/02-larbs-visudo-editor
 mkdir -p /etc/sysctl.d
 echo "kernel.dmesg_restrict = 0" >/etc/sysctl.d/dmesg.conf
+
+# Cleanup
+rm -f /etc/sudoers.d/larbs-temp
 
 # Last message! Install complete!
 finalize
